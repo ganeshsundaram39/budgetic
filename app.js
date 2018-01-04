@@ -5,6 +5,23 @@ var budgetController = (function() {
         this.id = id;
         this.description = description;
         this.value = value;
+        this.percentage = -1;
+    };
+
+    Expense.prototype.calcPercentage = function(totalIncome) {
+
+        if (totalIncome > 0) {
+
+            this.percentage = Math.round((this.value / totalIncome) * 100);
+
+        } else {
+            this.percentage = -1;
+        }
+    };
+
+    Expense.prototype.getPercentage = function() {
+        return this.percentage;
+
     };
 
     var Income = function(id, description, value) {
@@ -59,18 +76,18 @@ var budgetController = (function() {
             // return the new element
             return newItem;
         },
-        deleteItem: function(type,id){
-        	var ids, index;
-        	ids = data.allItems[type].map(function(current){
-        		return current.id;
-        	});
-        	
-        	index = ids.indexOf(id);
-        	
-        	if(index!== -1){
-        		data.allItems[type].splice(index,1);
+        deleteItem: function(type, id) {
+            var ids, index;
+            ids = data.allItems[type].map(function(current) {
+                return current.id;
+            });
 
-        	}
+            index = ids.indexOf(id);
+
+            if (index !== -1) {
+                data.allItems[type].splice(index, 1);
+
+            }
         },
         testing: function() {
             console.log(data);
@@ -91,6 +108,19 @@ var budgetController = (function() {
             }
 
 
+        },
+        calculatePercentages: function() {
+            var totalIncome = data.totals.inc;
+            data.allItems.exp.forEach(function(cur) {
+                cur.calcPercentage(totalIncome);
+            });
+
+        },
+        getPercentages: function() {
+            var allPerc = data.allItems.exp.map(function(cur) {
+                return cur.getPercentage();
+            });
+            return allPerc;
         },
         getBudget: function() {
             return {
@@ -119,8 +149,35 @@ var UIController = (function() {
         incomeLabel: 'budget__income--value',
         expenseLabel: 'budget__expenses--value',
         percentageLabel: 'budget__expenses--percentage',
-        container:'container'  
-        };
+        container: 'container',
+        expensesPercLabel: '.item__percentage',
+        dateLabel: 'budget__title--month'
+    };
+
+
+    var formatNumber = function(num, type) {
+        var numSplit, int, dec, sign;
+        num = Math.abs(num);
+        num = num.toFixed(2);
+        numSplit = num.split('.');
+        int = numSplit[0];
+        dec = numSplit[1];
+        if (int.length > 3) {
+            int = int.substr(0, int.length - 3) + ',' + int.substr(int.length - 3, 3);
+        }
+        dec = numSplit[1];
+        sign = type === 'exp' ? '-' : '+';
+        return sign + '' + int + '.' + dec;
+
+
+
+    };
+    var nodeListForEach = function(list, callback) {
+        for (var i = 0; i < list.length; i++) {
+            callback(list[i], i);
+        }
+
+    };
 
     return {
         getInput: function() {
@@ -146,19 +203,15 @@ var UIController = (function() {
             //Replace the placeholder text with some actual data
             newHtml = html.replace('%id%', obj.id);
             newHtml = newHtml.replace('%description%', obj.description);
-            newHtml = newHtml.replace('%value%', obj.value);
+            newHtml = newHtml.replace('%value%', formatNumber(obj.value, type));
 
 
             //INsert the HTML into the DOM
             document.getElementsByClassName(element)[0].insertAdjacentHTML('beforeend', newHtml);
         },
-        deleteListItem: function(selectorID){
-        	var el = document.getElementById(selectorID);
-        	el.parentNode.removeChild(el);
-
-        	
-
-
+        deleteListItem: function(selectorID) {
+            var el = document.getElementById(selectorID);
+            el.parentNode.removeChild(el);
         },
         clearFields: function() {
             var fields;
@@ -172,11 +225,46 @@ var UIController = (function() {
 
         },
         displayBudget: function(obj) {
-            document.getElementsByClassName(DOMstrings.budgetLabel)[0].textContent = obj.budget;
-            document.getElementsByClassName(DOMstrings.incomeLabel)[0].textContent = obj.totalInc;
-            document.getElementsByClassName(DOMstrings.expenseLabel)[0].textContent = obj.totalExp;
+            var type = obj.budget > 0 ? 'inc' : 'exp';
+
+            document.getElementsByClassName(DOMstrings.budgetLabel)[0].textContent = formatNumber(obj.budget, type);
+            document.getElementsByClassName(DOMstrings.incomeLabel)[0].textContent = formatNumber(obj.totalInc, 'inc');
+            document.getElementsByClassName(DOMstrings.expenseLabel)[0].textContent = formatNumber(obj.totalExp, 'exp');
             document.getElementsByClassName(DOMstrings.percentageLabel)[0].textContent = obj.percentage !== -1 ? obj.percentage + "%" : "---";
+        },
+        displayPercentages: function(percentages) {
+            var fields = document.querySelectorAll(DOMstrings.expensesPercLabel);
+
+            nodeListForEach(fields, function(current, index) {
+                if (percentages[index] > 0) {
+                    current.textContent = percentages[index] + '%';
+                } else {
+                    current.textContent = "---";
+                }
+            });
+
+
+        },
+        displayMonth: function() {
+            var now, year, month, months;
+            now = new Date();
+
+            year = now.getFullYear();
+            month = now.getMonth();
+            months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+
+            document.getElementsByClassName(DOMstrings.dateLabel)[0].textContent = months[month] + ' ' + year;
+
+        },
+        changedType: function() {
+            var fields = document.querySelectorAll('.' + DOMstrings.inputType + ',.' + DOMstrings.inputValue + ',.' + DOMstrings.inputDescription);
+            nodeListForEach(fields, function(cur) {
+                cur.classList.toggle('red-focus');
+            });
+            document.getElementsByClassName(DOMstrings.inputBtn)[0].classList.toggle('red');
         }
+
     };
 })();
 
@@ -189,7 +277,6 @@ var controller = (function(budgetCtrl, UICtrl) {
     var updateBudget = function() {
         // 1. Calculate the budget
         budgetCtrl.calculateBudget();
-
 
         // 2. Return the Budget
         var budget = budgetCtrl.getBudget();
@@ -216,7 +303,20 @@ var controller = (function(budgetCtrl, UICtrl) {
 
             // 5. calculate and update budget
             updateBudget();
+
+            //4. Calculate and update the percentages
+            updatePercentages();
         }
+    };
+    var updatePercentages = function() {
+        // 1. Calculate percentages
+        budgetCtrl.calculatePercentages();
+
+        // 2. Read percentages from the budget controller
+        var percentages = budgetCtrl.getPercentages();
+
+        // 3. Update the UI with the new percentages  
+        UICtrl.displayPercentages(percentages);
     };
 
     var setupEventListeners = function() {
@@ -226,28 +326,32 @@ var controller = (function(budgetCtrl, UICtrl) {
             if (event.keyCode === 13 || event.which === 13)
                 ctrlAddItem();
         });
-        document.getElementsByClassName(DOM.container)[0].addEventListener('click',ctrlDeleteItem);
+        document.getElementsByClassName(DOM.container)[0].addEventListener('click', ctrlDeleteItem);
+        document.querySelector('.' + DOM.inputType).addEventListener('change', UICtrl.changedType);
     };
-    var ctrlDeleteItem = function(event){
-    	var itemID,splitID,type,ID;
-    	itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
-    	if(itemID){
-    		//inc-1
-    		splitID = itemID.split('-');
-    		type = splitID[0];
-    		ID = splitID[1];
-    		
-    		// 1. delete the item from the data struture
-    		budgetCtrl.deleteItem(type,parseInt(ID));
-    		
+    var ctrlDeleteItem = function(event) {
+        var itemID, splitID, type, ID;
+        itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
+        if (itemID) {
+            //inc-1
+            splitID = itemID.split('-');
+            type = splitID[0];
+            ID = splitID[1];
 
-    		// 2. Delete the item from the UI
-    		UICtrl.deleteListItem(itemID);
+            // 1. delete the item from the data struture
+            budgetCtrl.deleteItem(type, parseInt(ID));
 
 
-    		//3. Update and show the new budget
-    		updateBudget();
-    	}
+            // 2. Delete the item from the UI
+            UICtrl.deleteListItem(itemID);
+
+
+            //3. Update and show the new budget
+            updateBudget();
+
+            //4. Calculate and update the percentages
+            updatePercentages();
+        }
     };
 
     return {
@@ -260,6 +364,7 @@ var controller = (function(budgetCtrl, UICtrl) {
                 percentage: -1
 
             });
+            UICtrl.displayMonth();
             setupEventListeners();
         }
     };
