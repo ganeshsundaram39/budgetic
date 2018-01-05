@@ -3,10 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <link rel="shortcut icon" src="https://d30y9cdsu7xlg0.cloudfront.net/png/19301-200.png" />
+    <link type="image/x-icon" rel="shortcut icon" href="tabicon.png">
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:100,300,400,600" rel="stylesheet" type="text/css">
     <link href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css" rel="stylesheet" type="text/css">
     <link type="text/css" rel="stylesheet" href="style.css">
+    <link type="text/css" rel="stylesheet" href="alertify.css">
     <title>Budgetic</title>
 </head>
 
@@ -43,6 +44,10 @@
                 <input type="text" class="add__description" placeholder="Add description">
                 <input type="number" class="add__value" placeholder="Value">
                 <button class="add__btn"><i class="ion-ios-checkmark-outline"></i></button>
+                <button class="save__btn"><i class="ion-ios-cloud-upload-outline"></i></button>
+                <button class="download__btn"><i class="ion-ios-cloud-download-outline"></i></button>
+                <button class="history-toggle__btn"><i class="ion-ios-toggle-outline"></i></button>
+
             </div>
         </div>
         <div class="container clearfix">
@@ -102,8 +107,37 @@
                         -->
                 </div>
             </div>
+             <div class="history">
+                <h2 class="history__title">History</h2>
+                <div class="history__list">
+                    <!--
+                        <div class="item clearfix" id="income-0">
+                            <div class="item__description">Salary</div>
+                            <div class="right clearfix">
+                                <div class="item__value">+ 2,100.00</div>
+                                <div class="item__delete">
+                                    <button class="item__delete--btn">
+                                        <i class="ion-ios-close-outline"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="item clearfix" id="income-1">
+                            <div class="item__description">Sold car</div>
+                            <div class="right clearfix">
+                                <div class="item__value">+ 1,500.00</div>
+                                <div class="item__delete">
+                                    <button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        -->
+                </div>
+            </div>
         </div>
     </div>
+    <script src="alertify.min.js"></script>
     <script src="app.js"></script>
 </body>
 
