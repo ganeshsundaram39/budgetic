@@ -69,7 +69,6 @@ var budgetController = (function() {
             }
 
             // PUsh it into our data struture
-
             data.allItems[type].push(newItem);
 
             // return the new element
@@ -78,8 +77,8 @@ var budgetController = (function() {
         getData: function() {
             return JSON.stringify(data);
         },
-        setData:function(dataFromLocal){
-        	data = JSON.parse(dataFromLocal);
+        setData: function(dataFromLocal) {
+            data = dataFromLocal;
         },
         deleteItem: function(type, id) {
             var ids, index;
@@ -149,6 +148,7 @@ var UIController = (function() {
         inputBtn: 'add__btn',
         incomeContainer: 'income__list',
         expenseContainer: 'expenses__list',
+        historyContainer: 'history__list',
         budgetLabel: 'budget__value',
         incomeLabel: 'budget__income--value',
         expenseLabel: 'budget__expenses--value',
@@ -191,7 +191,6 @@ var UIController = (function() {
         month = now.getMonth();
         months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         return months[month] + ' ' + year;
-
     };
 
     return {
@@ -223,6 +222,17 @@ var UIController = (function() {
 
             //INsert the HTML into the DOM
             document.getElementsByClassName(element)[0].insertAdjacentHTML('beforeend', newHtml);
+        },
+        addHistoryItem: function(key) {
+            var element, html, newHtml;
+            element = DOMstrings.historyContainer;
+            html = '<div class="item clearfix" id="%date%"><div class="item__description">%date%</div><div class="right clearfix"><div class="item__value"></div><div class="item__status"></div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+            newHtml = html.replace('%date%', key);
+            newHtml = newHtml.replace('%date%', key);
+
+            //INsert the HTML into the DOM
+            document.getElementsByClassName(element)[0].insertAdjacentHTML('beforeend', newHtml);
+
         },
         deleteListItem: function(selectorID) {
             var el = document.getElementById(selectorID);
@@ -257,8 +267,6 @@ var UIController = (function() {
                     current.textContent = "---";
                 }
             });
-
-
         },
         displayMonthYear: function() {
             document.getElementsByClassName(DOMstrings.dateLabel)[0].textContent = getMonthYear();
@@ -274,7 +282,14 @@ var UIController = (function() {
             document.getElementsByClassName(DOMstrings.inputBtn)[0].classList.toggle('red');
         },
         toggle_visibility: function() {
-            var history, fields;
+            var history, fields, historyBtn;
+
+            // Change Toggle icon
+            historyBtn = document.getElementsByClassName(DOMstrings.historyTogBtn)[0];
+            historyBtn.childNodes[0].classList.toggle('ion-toggle');
+            historyBtn.childNodes[0].classList.toggle('ion-toggle-filled');
+
+            // Add class to hide/show history section and expand/condense income and expense
             history = document.getElementsByClassName(DOMstrings.history)[0];
             history.classList.toggle('toggle_display');
             fields = document.querySelectorAll('.' + DOMstrings.income + ',.' + DOMstrings.expense);
@@ -284,13 +299,30 @@ var UIController = (function() {
 
         },
         showAlert: function(type, notification) {
+
+            // Set delay for the notification
             alertify.set({ delay: 2000 });
+
             if (type === 'inc') {
                 alertify.log(notification, "success");
 
             } else {
                 alertify.log(notification, "error");
             }
+        },
+        alreadyEntered: function(listcontainer, current) {
+            var list, listItem;
+            list = document.getElementsByClassName(listcontainer)[0];
+
+            // Get all items from list
+            for (var entry = 0; entry < list.childElementCount; entry++) {
+
+                listItem = list.children[entry].children[0].textContent;
+                if (listItem === current) {
+                    return true;
+                }
+            }
+            return false;
         }
     };
 })();
@@ -298,7 +330,7 @@ var UIController = (function() {
 
 // GlOBAL APP CONTROLLER
 var controller = (function(budgetCtrl, UICtrl) {
-    var input, newItem;
+
     var DOM = UICtrl.getDomstrings();
 
     var updateBudget = function() {
@@ -314,11 +346,14 @@ var controller = (function(budgetCtrl, UICtrl) {
 
 
     var ctrlAddItem = function() {
+        var input, newItem, listcontainer;
 
         // 1. Get the filed input data
         input = UICtrl.getInput();
 
-        if (input.description !== "" && !isNaN(input.value) && input.value > 0) {
+        listcontainer = input.type === 'inc' ? DOM.incomeContainer : DOM.expenseContainer;
+
+        if (input.description !== "" && !isNaN(input.value) && input.value > 0 && !UICtrl.alreadyEntered(listcontainer, input.description)) {
             // 2. Add the item to the budget controller
             newItem = budgetCtrl.addItem(input.type, input.description, input.value);
 
@@ -331,10 +366,10 @@ var controller = (function(budgetCtrl, UICtrl) {
             // 5. Calculate and update budget
             updateBudget();
 
-            //6. Calculate and update the percentages
+            // 6. Calculate and update the percentages
             updatePercentages();
 
-            //7.sho
+            // 7. Show Notification
             UICtrl.showAlert(input.type, "Added");
         }
     };
@@ -350,14 +385,39 @@ var controller = (function(budgetCtrl, UICtrl) {
     };
 
     var saveBudget = function() {
+        var incomeList, expensesList;
         // Check browser support
         if (typeof(Storage) !== "undefined") {
-            // Store
-            localStorage.setItem(UICtrl.getDate(), budgetCtrl.getData());
+
+            //Check if user has entered some data 
+            incomeList = document.getElementsByClassName(DOM.incomeContainer)[0];
+            expensesList = document.getElementsByClassName(DOM.expenseContainer)[0];
+
+            if (incomeList.childElementCount > 0 || expensesList.childElementCount > 0) {
+                // Store in local storage
+                localStorage.setItem(UICtrl.getDate(), budgetCtrl.getData());
+
+                // Check if already entered in history
+                if (!UICtrl.alreadyEntered(DOM.historyContainer, UICtrl.getDate())) {
+
+                    // Display in history
+                    UICtrl.addHistoryItem(UICtrl.getDate());
+                }
+                // Show Notification
+                UICtrl.showAlert("inc", "Saved");
+            } else {
+                // Remove from local storage
+                localStorage.removeItem(UICtrl.getDate());
+
+                // Delete the item from the UI
+                UICtrl.deleteListItem(itemID);
+            }
 
         } else {
             alert("Sorry, your browser does not support Web Storage...");
+
         }
+
     };
 
     var setupEventListeners = function() {
@@ -368,9 +428,57 @@ var controller = (function(budgetCtrl, UICtrl) {
                 ctrlAddItem();
         });
         document.getElementsByClassName(DOM.container)[0].addEventListener('click', ctrlDeleteItem);
+        document.getElementsByClassName(DOM.historyContainer)[0].addEventListener('click', ctrlDeleteHistoryItem);
+
         document.querySelector('.' + DOM.inputType).addEventListener('change', UICtrl.changedType);
         document.getElementsByClassName(DOM.historyTogBtn)[0].addEventListener('click', UICtrl.toggle_visibility);
         document.getElementsByClassName(DOM.saveBtn)[0].addEventListener('click', saveBudget);
+    };
+    var ctrlDeleteHistoryItem = function(event) {
+        var itemID, incomeList, expenseList;
+
+        itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
+
+        alertify.confirm("Click OK to Delete", function(e) {
+            if (e) {
+
+                // user clicked "ok"
+                if (itemID) {
+
+                    // Delete the item from the History UI
+                    UICtrl.deleteListItem(itemID);
+
+                    // Delete from local storage
+                    localStorage.removeItem(itemID);
+
+                    if (itemID === UICtrl.getDate()) {
+                        // Set 0 to UI element
+                        UICtrl.displayBudget({
+                            budget: 0,
+                            totalInc: 0,
+                            totalExp: 0,
+                            percentage: -1
+                        });
+
+                        // Set Budget back to default
+                        budgetCtrl.setData({ allItems: { exp: [], inc: [] }, totals: { exp: 0, inc: 0 }, budget: 0, percentage: -1 });
+
+                        // Remove all the items from the list
+                        incomeList = document.getElementsByClassName(DOM.incomeContainer)[0];
+                        expenseList = document.getElementsByClassName(DOM.expenseContainer)[0];
+                        while (incomeList.firstChild) {
+                            incomeList.removeChild(incomeList.firstChild);
+                        }
+                        while (expenseList.firstChild) {
+                            expenseList.removeChild(expenseList.firstChild);
+                        }
+                    }
+                }
+            } else {
+                // user clicked "cancel"
+            }
+        });
+        event.stopPropagation();
     };
     var ctrlDeleteItem = function(event) {
         var itemID, splitID, type, ID;
@@ -397,18 +505,44 @@ var controller = (function(budgetCtrl, UICtrl) {
         }
     };
 
+    var retrieveLocalStorage = function() {
+    var key, value;
+        for (var i = 0, len = localStorage.length; i < len; ++i) {
+        	key = localStorage.key(i);
+        	value = JSON.parse(localStorage.getItem(key));
+        	console.log(key);
+        	console.log(value);
+            UICtrl.addHistoryItem(key);
+            if (key === UICtrl.getDate()) {
+                budgetCtrl.setData(value);
+                UICtrl.displayBudget({
+                    budget: value.budget,
+                    totalInc: value.totals.inc,
+                    totalExp: value.totals.exp,
+                    percentage: value.percentage
+                });
+
+            }
+        }
+    };
+
     return {
         init: function() {
-            console.log('Application has started.');
-            UICtrl.displayBudget({
-                budget: 0,
-                totalInc: 0,
-                totalExp: 0,
-                percentage: -1
+            UICtrl.showAlert("inc", "Loading...");
 
-            });
+            if (localStorage.length > 0) {
+                retrieveLocalStorage();
+            } else {
+                UICtrl.displayBudget({
+                    budget: 0,
+                    totalInc: 0,
+                    totalExp: 0,
+                    percentage: -1
+                });
+            }
             UICtrl.displayMonthYear();
             setupEventListeners();
+            console.log('Application has started.');
         }
     };
 

@@ -36,6 +36,7 @@ body {
 }
 
 
+
 /**********************************************
 *** TOP PART
 **********************************************/
@@ -118,6 +119,7 @@ body {
 
 
 
+
 /**********************************************
 *** BOTTOM PART
 **********************************************/
@@ -187,8 +189,7 @@ body {
 .save__btn:active,
 .add__btn:active,
 .download__btn:active,
-.history-toggle__btn:active
- {
+.history-toggle__btn:active {
     transform: translateY(2px);
 }
 
@@ -202,10 +203,10 @@ body {
 .add__btn:focus,
 .save__btn:focus,
 .download__btn:focus,
-.history-toggle__btn
-{
+.history-toggle__btn {
     outline: none;
 }
+
 
 /***** LISTS *****/
 
@@ -214,7 +215,7 @@ body {
     margin: 60px auto;
 }
 
-.income{
+.income {
     float: left;
     width: 475px;
     margin-right: 45px;
@@ -223,7 +224,6 @@ body {
 .expenses {
     float: left;
     width: 475px;
-    
 }
 
 .condense {
@@ -233,12 +233,14 @@ body {
 .history {
     float: left;
     width: 300px;
-    display:none;
+    display: none;
 }
-.toggle_display{
-    display:block;
+
+.toggle_display {
+    display: block;
     margin-left: 45px;
 }
+
 h2 {
     text-transform: uppercase;
     font-size: 18px;
@@ -280,6 +282,7 @@ h2 {
     transition: transform 0.3s;
 }
 
+.item__status,
 .item__percentage {
     float: left;
     margin-left: 20px;
@@ -301,6 +304,12 @@ h2 {
 .expenses .item__percentage,
 .expenses .item__delete--btn {
     color: #FF5049;
+}
+
+.history .item__value,
+.history .item__delete--btn,
+.history .item__status {
+    color: #28B9B5;
 }
 
 
@@ -335,21 +344,11 @@ h2 {
     transform: translateX(-20px);
 }
 
-.item:hover .item__percentage {
+.item:hover .item__percentage,
+.item:hover .item__status {
     transform: translateX(-20px);
 }
 
-
-.unpaid {
-    background-color: #FFDAD9 !important;
-    cursor: pointer;
-    color: #FF5049;
-}
-
-.unpaid .item__percentage {
-    box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.1);
-}
-
-.unpaid:hover .item__description {
-    font-weight: 900;
+.item__description {
+    text-transform: capitalize;
 }
