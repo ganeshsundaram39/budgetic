@@ -133,12 +133,10 @@ var budgetController = (function() {
                 percentage: data.percentage
             };
         }
-
     };
-
 })();
 
-//UI CONTROLLER
+// UI CONTROLLER
 var UIController = (function() {
 
     var DOMstrings = {
@@ -160,7 +158,8 @@ var UIController = (function() {
         history: 'history',
         income: 'income',
         expense: 'expenses',
-        saveBtn: 'save__btn'
+        saveBtn: 'save__btn',
+        downloadBtn: 'download__btn'
     };
 
 
@@ -226,7 +225,7 @@ var UIController = (function() {
         addHistoryItem: function(key) {
             var element, html, newHtml;
             element = DOMstrings.historyContainer;
-            html = '<div class="item clearfix" id="%date%"><div class="item__description">%date%</div><div class="right clearfix"><div class="item__value"></div><div class="item__status"></div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+            html = '<div class="item clearfix" id="%date%"><div class="item__description">%date%</div><div class="right clearfix"><div class="item__delete"><button class="item__delete--history--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
             newHtml = html.replace('%date%', key);
             newHtml = newHtml.replace('%date%', key);
 
@@ -327,10 +326,8 @@ var UIController = (function() {
     };
 })();
 
-
 // GlOBAL APP CONTROLLER
 var controller = (function(budgetCtrl, UICtrl) {
-
     var DOM = UICtrl.getDomstrings();
 
     var updateBudget = function() {
@@ -343,10 +340,19 @@ var controller = (function(budgetCtrl, UICtrl) {
         // 3. Display the budget on the UI
         UICtrl.displayBudget(budget);
     };
+    var updatePercentages = function() {
 
+        // 1. Calculate percentages
+        budgetCtrl.calculatePercentages();
 
+        // 2. Read percentages from the budget controller
+        var percentages = budgetCtrl.getPercentages();
+
+        // 3. Update the UI with the new percentages  
+        UICtrl.displayPercentages(percentages);
+    };
     var ctrlAddItem = function() {
-        var input, newItem, listcontainer;
+        var input, newItem, listcontainer, targetElement;
 
         // 1. Get the filed input data
         input = UICtrl.getInput();
@@ -369,23 +375,51 @@ var controller = (function(budgetCtrl, UICtrl) {
             // 6. Calculate and update the percentages
             updatePercentages();
 
-            // 7. Show Notification
-            UICtrl.showAlert(input.type, "Added");
+            // 7. Set Saved Icon
+            saveBtn = document.getElementsByClassName(DOM.saveBtn)[0];
+            saveBtn.childNodes[0].classList.add('ion-ios-cloud-upload-outline');
+
+            if (event) {
+                if (event.target.classList.value !== 'item__description') {
+
+                    // 8. Show Notification when clicked
+                    UICtrl.showAlert(input.type, "Added");
+                }
+            }
         }
     };
-    var updatePercentages = function() {
-        // 1. Calculate percentages
-        budgetCtrl.calculatePercentages();
+    var ctrlDeleteItem = function(event) {
+        var itemID, splitID, type, ID;
 
-        // 2. Read percentages from the budget controller
-        var percentages = budgetCtrl.getPercentages();
+        itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
 
-        // 3. Update the UI with the new percentages  
-        UICtrl.displayPercentages(percentages);
+        if (itemID) {
+            //inc-1
+            splitID = itemID.split('-');
+            type = splitID[0];
+            ID = splitID[1];
+
+            // 1. delete the item from the data struture
+            budgetCtrl.deleteItem(type, parseInt(ID));
+
+            // 2. Delete the item from the UI
+            UICtrl.deleteListItem(itemID);
+
+            //3. Update and show the new budget
+            updateBudget();
+
+            //4. Calculate and update the percentages
+            updatePercentages();
+            saveBtn = document.getElementsByClassName(DOM.saveBtn)[0];
+            saveBtn.childNodes[0].classList.add('ion-ios-cloud-upload-outline');
+            saveBtn.childNodes[0].classList.remove('ion-ios-cloud-upload');
+            UICtrl.showAlert("exp", "Removed");
+        }
     };
 
     var saveBudget = function() {
-        var incomeList, expensesList;
+        var incomeList, expensesList, saveBtn;
+
         // Check browser support
         if (typeof(Storage) !== "undefined") {
 
@@ -394,6 +428,7 @@ var controller = (function(budgetCtrl, UICtrl) {
             expensesList = document.getElementsByClassName(DOM.expenseContainer)[0];
 
             if (incomeList.childElementCount > 0 || expensesList.childElementCount > 0) {
+
                 // Store in local storage
                 localStorage.setItem(UICtrl.getDate(), budgetCtrl.getData());
 
@@ -404,6 +439,9 @@ var controller = (function(budgetCtrl, UICtrl) {
                     UICtrl.addHistoryItem(UICtrl.getDate());
                 }
                 // Show Notification
+                saveBtn = document.getElementsByClassName(DOM.saveBtn)[0];
+                saveBtn.childNodes[0].classList.remove('ion-ios-cloud-upload-outline');
+                saveBtn.childNodes[0].classList.add('ion-ios-cloud-upload');
                 UICtrl.showAlert("inc", "Saved");
             } else {
                 // Remove from local storage
@@ -415,12 +453,166 @@ var controller = (function(budgetCtrl, UICtrl) {
 
         } else {
             alert("Sorry, your browser does not support Web Storage...");
+        }
+    };
+    var downloadBudget = function() {
+
+
+        var pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'in',
+            format: [4, 2]
+        });
+
+        var options = {
+            pagesplit: false,
+            useOverflow: true
+        };
+        pdf.addHTML(document.body, options, function() {
+            pdf.save('ganesh.pdf');
+        });
+
+    };
+    var resetUI = function(event) {
+        var incomeList, expenseList;
+
+        UICtrl.displayBudget({
+            budget: 0,
+            totalInc: 0,
+            totalExp: 0,
+            percentage: -1
+        });
+
+        // Set Budget back to default
+        budgetCtrl.setData({ allItems: { exp: [], inc: [] }, totals: { exp: 0, inc: 0 }, budget: 0, percentage: -1 });
+
+        // Remove all the items from the list
+        incomeList = document.getElementsByClassName(DOM.incomeContainer)[0];
+        expenseList = document.getElementsByClassName(DOM.expenseContainer)[0];
+        while (incomeList.firstChild) {
+            incomeList.removeChild(incomeList.firstChild);
+        }
+        while (expenseList.firstChild) {
+            expenseList.removeChild(expenseList.firstChild);
+        }
+    };
+    var ctrlHistoryItem = function(event) {
+        var itemID;
+
+        // Check if user wants to delete or view the Budget for particular month
+        if (event.target.classList.value === 'item__description') {
+
+            UICtrl.showAlert("inc", "Loading...");
+
+            // Reset UI and reset database
+            resetUI();
+
+            // Display Date in the UI
+            document.getElementsByClassName(DOM.dateLabel)[0].textContent = event.target.textContent;
+
+            // Display budget in the UI
+            retrieveParticularMonth(event.target.textContent);
+
+        } else if (event.target.classList.value === 'ion-ios-close-outline') {
+
+            alertify.confirm("Click OK to Delete", function(e) {
+
+                if (e) {
+
+                    itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
+
+                    // user clicked "ok"
+                    if (itemID) {
+
+                        // Delete the item from the History UI
+                        UICtrl.deleteListItem(itemID);
+
+                        // Delete from local storage
+                        localStorage.removeItem(itemID);
+
+                        if (itemID === UICtrl.getDate()) {
+                            // Reset UI and reset database
+                            resetUI();
+                            UICtrl.showAlert("exp", "Deleted from Storage");
+                            saveBtn = document.getElementsByClassName(DOM.saveBtn)[0];
+                            saveBtn.childNodes[0].classList.add('ion-ios-cloud-upload-outline');
+                            saveBtn.childNodes[0].classList.remove('ion-ios-cloud-upload');
+                            document.getElementsByClassName(DOM.inputDescription)[0].focus();
+                        } else {
+                            UICtrl.showAlert("exp", "Deleted from Storage");
+                        }
+                    }
+                } else {
+                    // user clicked "cancel"
+                }
+            });
+        }
+        event.stopPropagation();
+    };
+    var retrieveParticularMonth = function(monthYear) {
+        var value, type, inputType, inputDescription, inputValue, saveBtn;
+
+        // Get value(budgetDS) for the particular key(month&Year)
+        value = JSON.parse(localStorage.getItem(monthYear));
+
+        // Assign value to controls and call ctrlAddItem()
+        inputType = document.getElementsByClassName(DOM.inputType)[0];
+        inputDescription = document.getElementsByClassName(DOM.inputDescription)[0];
+        inputValue = document.getElementsByClassName(DOM.inputValue)[0];
+
+        // Display income and expenses
+        type = 'inc';
+        for (var income in value.allItems[type]) {
+            inputType.value = type;
+            inputDescription.value = value.allItems[type][income].description;
+            inputValue.value = value.allItems[type][income].value;
+            ctrlAddItem();
 
         }
+        type = 'exp';
+        for (var expense in value.allItems[type]) {
+            inputType.value = type;
+            inputDescription.value = value.allItems[type][expense].description;
+            inputValue.value = value.allItems[type][expense].value;
+            ctrlAddItem();
+
+        }
+        inputType.value = 'inc';
+        // To show user that data is saved using icon
+        saveBtn = document.getElementsByClassName(DOM.saveBtn)[0];
+        saveBtn.childNodes[0].classList.remove('ion-ios-cloud-upload-outline');
+        saveBtn.childNodes[0].classList.add('ion-ios-cloud-upload');
+        document.getElementsByClassName(DOM.inputDescription)[0].focus();
 
     };
 
+    var retrieveLocalStorage = function() {
+        var key;
+
+        for (var i = 0, len = localStorage.length; i < len; ++i) {
+
+            // Retrieve all keys(month&year) from storage
+            key = localStorage.key(i);
+
+            // Set UI of History with all the keys(Month Year)
+            UICtrl.addHistoryItem(key);
+
+            // If key is equal to current month&year display its contents(values)
+            if (key === UICtrl.getDate()) {
+                retrieveParticularMonth(key);
+
+            } else {
+                UICtrl.displayBudget({
+                    budget: 0,
+                    totalInc: 0,
+                    totalExp: 0,
+                    percentage: -1
+                });
+            }
+        }
+    };
     var setupEventListeners = function() {
+
         document.getElementsByClassName(DOM.inputBtn)[0].addEventListener('click', ctrlAddItem);
 
         document.addEventListener('keypress', function(event) {
@@ -428,108 +620,20 @@ var controller = (function(budgetCtrl, UICtrl) {
                 ctrlAddItem();
         });
         document.getElementsByClassName(DOM.container)[0].addEventListener('click', ctrlDeleteItem);
-        document.getElementsByClassName(DOM.historyContainer)[0].addEventListener('click', ctrlDeleteHistoryItem);
+        document.getElementsByClassName(DOM.historyContainer)[0].addEventListener('click', ctrlHistoryItem);
 
         document.querySelector('.' + DOM.inputType).addEventListener('change', UICtrl.changedType);
         document.getElementsByClassName(DOM.historyTogBtn)[0].addEventListener('click', UICtrl.toggle_visibility);
         document.getElementsByClassName(DOM.saveBtn)[0].addEventListener('click', saveBudget);
+        document.getElementsByClassName(DOM.downloadBtn)[0].addEventListener('click', downloadBudget);
+
+
     };
-    var ctrlDeleteHistoryItem = function(event) {
-        var itemID, incomeList, expenseList;
-
-        itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
-
-        alertify.confirm("Click OK to Delete", function(e) {
-            if (e) {
-
-                // user clicked "ok"
-                if (itemID) {
-
-                    // Delete the item from the History UI
-                    UICtrl.deleteListItem(itemID);
-
-                    // Delete from local storage
-                    localStorage.removeItem(itemID);
-
-                    if (itemID === UICtrl.getDate()) {
-                        // Set 0 to UI element
-                        UICtrl.displayBudget({
-                            budget: 0,
-                            totalInc: 0,
-                            totalExp: 0,
-                            percentage: -1
-                        });
-
-                        // Set Budget back to default
-                        budgetCtrl.setData({ allItems: { exp: [], inc: [] }, totals: { exp: 0, inc: 0 }, budget: 0, percentage: -1 });
-
-                        // Remove all the items from the list
-                        incomeList = document.getElementsByClassName(DOM.incomeContainer)[0];
-                        expenseList = document.getElementsByClassName(DOM.expenseContainer)[0];
-                        while (incomeList.firstChild) {
-                            incomeList.removeChild(incomeList.firstChild);
-                        }
-                        while (expenseList.firstChild) {
-                            expenseList.removeChild(expenseList.firstChild);
-                        }
-                    }
-                }
-            } else {
-                // user clicked "cancel"
-            }
-        });
-        event.stopPropagation();
-    };
-    var ctrlDeleteItem = function(event) {
-        var itemID, splitID, type, ID;
-        itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
-        if (itemID) {
-            //inc-1
-            splitID = itemID.split('-');
-            type = splitID[0];
-            ID = splitID[1];
-
-            // 1. delete the item from the data struture
-            budgetCtrl.deleteItem(type, parseInt(ID));
-
-
-            // 2. Delete the item from the UI
-            UICtrl.deleteListItem(itemID);
-
-
-            //3. Update and show the new budget
-            updateBudget();
-
-            //4. Calculate and update the percentages
-            updatePercentages();
-        }
-    };
-
-    var retrieveLocalStorage = function() {
-    var key, value;
-        for (var i = 0, len = localStorage.length; i < len; ++i) {
-        	key = localStorage.key(i);
-        	value = JSON.parse(localStorage.getItem(key));
-        	console.log(key);
-        	console.log(value);
-            UICtrl.addHistoryItem(key);
-            if (key === UICtrl.getDate()) {
-                budgetCtrl.setData(value);
-                UICtrl.displayBudget({
-                    budget: value.budget,
-                    totalInc: value.totals.inc,
-                    totalExp: value.totals.exp,
-                    percentage: value.percentage
-                });
-
-            }
-        }
-    };
-
     return {
         init: function() {
             UICtrl.showAlert("inc", "Loading...");
 
+            // Check if storage contains key value pair
             if (localStorage.length > 0) {
                 retrieveLocalStorage();
             } else {
@@ -543,6 +647,7 @@ var controller = (function(budgetCtrl, UICtrl) {
             UICtrl.displayMonthYear();
             setupEventListeners();
             console.log('Application has started.');
+
         }
     };
 

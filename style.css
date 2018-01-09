@@ -37,6 +37,8 @@ body {
 
 
 
+
+
 /**********************************************
 *** TOP PART
 **********************************************/
@@ -116,6 +118,8 @@ body {
     text-align: center;
     border-radius: 3px;
 }
+
+
 
 
 
@@ -208,6 +212,8 @@ body {
 }
 
 
+
+
 /***** LISTS *****/
 
 .container {
@@ -275,6 +281,7 @@ h2 {
 
 .item__description {
     float: left;
+    text-transform: capitalize;
 }
 
 .item__value {
@@ -282,7 +289,7 @@ h2 {
     transition: transform 0.3s;
 }
 
-.item__status,
+
 .item__percentage {
     float: left;
     margin-left: 20px;
@@ -307,17 +314,20 @@ h2 {
 }
 
 .history .item__value,
-.history .item__delete--btn,
-.history .item__status {
+.history .item__delete--history--btn {
     color: #28B9B5;
 }
 
+.history .item__description:hover {
+    cursor: pointer;
+}
 
 .item__delete {
     float: left;
 }
 
-.item__delete--btn {
+.item__delete--btn,
+.item__delete--history--btn {
     font-size: 22px;
     background: none;
     border: none;
@@ -328,8 +338,13 @@ h2 {
     display: none;
 }
 
-.item__delete--btn:focus {
+.item__delete--btn:focus,
+.item__delete--history--btn {
     outline: none;
+}
+
+.item__delete--history--btn {
+    display: block;
 }
 
 .item__delete--btn:active {
@@ -344,11 +359,6 @@ h2 {
     transform: translateX(-20px);
 }
 
-.item:hover .item__percentage,
-.item:hover .item__status {
+.item:hover .item__percentage {
     transform: translateX(-20px);
-}
-
-.item__description {
-    text-transform: capitalize;
 }
