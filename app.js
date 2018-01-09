@@ -419,6 +419,8 @@ var controller = (function(budgetCtrl, UICtrl) {
 
     var saveBudget = function() {
         var incomeList, expensesList, saveBtn, currentMonthYear;
+        currentMonthYear = document.getElementsByClassName(DOM.dateLabel)[0].textContent;
+
 
         // Check browser support
         if (typeof(Storage) !== "undefined") {
@@ -426,8 +428,7 @@ var controller = (function(budgetCtrl, UICtrl) {
             //Check if user has entered some data 
             incomeList = document.getElementsByClassName(DOM.incomeContainer)[0];
             expensesList = document.getElementsByClassName(DOM.expenseContainer)[0];
-            currentMonthYear = document.getElementsByClassName(DOM.dateLabel)[0].textContent;
-
+            
 
             if (incomeList.childElementCount > 0 || expensesList.childElementCount > 0) {
 
@@ -450,7 +451,7 @@ var controller = (function(budgetCtrl, UICtrl) {
                 localStorage.removeItem(currentMonthYear);
 
                 // Delete the item from the UI
-                UICtrl.deleteListItem(itemID);
+                UICtrl.deleteListItem(currentMonthYear);
             }
 
         } else {
