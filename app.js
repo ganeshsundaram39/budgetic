@@ -418,7 +418,7 @@ var controller = (function(budgetCtrl, UICtrl) {
     };
 
     var saveBudget = function() {
-        var incomeList, expensesList, saveBtn;
+        var incomeList, expensesList, saveBtn, currentMonthYear;
 
         // Check browser support
         if (typeof(Storage) !== "undefined") {
@@ -426,17 +426,19 @@ var controller = (function(budgetCtrl, UICtrl) {
             //Check if user has entered some data 
             incomeList = document.getElementsByClassName(DOM.incomeContainer)[0];
             expensesList = document.getElementsByClassName(DOM.expenseContainer)[0];
+            currentMonthYear = document.getElementsByClassName(DOM.dateLabel)[0].textContent;
+
 
             if (incomeList.childElementCount > 0 || expensesList.childElementCount > 0) {
 
                 // Store in local storage
-                localStorage.setItem(UICtrl.getDate(), budgetCtrl.getData());
+                localStorage.setItem(currentMonthYear, budgetCtrl.getData());
 
                 // Check if already entered in history
-                if (!UICtrl.alreadyEntered(DOM.historyContainer, UICtrl.getDate())) {
+                if (!UICtrl.alreadyEntered(DOM.historyContainer, currentMonthYear)) {
 
                     // Display in history
-                    UICtrl.addHistoryItem(UICtrl.getDate());
+                    UICtrl.addHistoryItem(currentMonthYear);
                 }
                 // Show Notification
                 saveBtn = document.getElementsByClassName(DOM.saveBtn)[0];
@@ -445,7 +447,7 @@ var controller = (function(budgetCtrl, UICtrl) {
                 UICtrl.showAlert("inc", "Saved");
             } else {
                 // Remove from local storage
-                localStorage.removeItem(UICtrl.getDate());
+                localStorage.removeItem(currentMonthYear);
 
                 // Delete the item from the UI
                 UICtrl.deleteListItem(itemID);
@@ -456,22 +458,40 @@ var controller = (function(budgetCtrl, UICtrl) {
         }
     };
     var downloadBudget = function() {
+        var history, fields, currentMonthYear;
 
+        scroll(0, 0);
+        // Change Toggle icon
+            historyBtn = document.getElementsByClassName(DOM.historyTogBtn)[0];
+            historyBtn.childNodes[0].classList.remove('ion-toggle');
+            historyBtn.childNodes[0].classList.add('ion-toggle-filled');
 
-        var pdf = new jsPDF({
-            orientation: 'landscape',
-            unit: 'in',
-            format: [4, 2]
+        // Add class to hide/show history section and expand/condense income and expense
+        history = document.getElementsByClassName(DOM.history)[0];
+        history.classList.remove('toggle_display');
+        fields = document.querySelectorAll('.' + DOM.income + ',.' + DOM.expense);
+        nodeListForEach(fields, function(cur) {
+            cur.classList.remove('condense');
         });
+
+        var pdf = new jsPDF();
 
         var options = {
-            pagesplit: false,
-            useOverflow: true
+            format: "PNG",
+            background: "#ffffff"
         };
+        currentMonthYear = document.getElementsByClassName(DOM.dateLabel)[0].textContent;
         pdf.addHTML(document.body, options, function() {
-            pdf.save('ganesh.pdf');
+            pdf.save(currentMonthYear + '.pdf');
         });
+        UICtrl.showAlert("inc", "Downloading Please Wait...");
+        
 
+    };
+    var nodeListForEach = function(list, callback) {
+        for (var i = 0; i < list.length; i++) {
+            callback(list[i], i);
+        }
     };
     var resetUI = function(event) {
         var incomeList, expenseList;
@@ -497,7 +517,7 @@ var controller = (function(budgetCtrl, UICtrl) {
         }
     };
     var ctrlHistoryItem = function(event) {
-        var itemID;
+        var itemID, historylist;
 
         // Check if user wants to delete or view the Budget for particular month
         if (event.target.classList.value === 'item__description') {
@@ -506,9 +526,6 @@ var controller = (function(budgetCtrl, UICtrl) {
 
             // Reset UI and reset database
             resetUI();
-
-            // Display Date in the UI
-            document.getElementsByClassName(DOM.dateLabel)[0].textContent = event.target.textContent;
 
             // Display budget in the UI
             retrieveParticularMonth(event.target.textContent);
@@ -531,7 +548,7 @@ var controller = (function(budgetCtrl, UICtrl) {
                         localStorage.removeItem(itemID);
 
                         if (itemID === UICtrl.getDate()) {
-                            // Reset UI and reset database
+                            // Reset UI and reset datastructure
                             resetUI();
                             UICtrl.showAlert("exp", "Deleted from Storage");
                             saveBtn = document.getElementsByClassName(DOM.saveBtn)[0];
@@ -539,6 +556,15 @@ var controller = (function(budgetCtrl, UICtrl) {
                             saveBtn.childNodes[0].classList.remove('ion-ios-cloud-upload');
                             document.getElementsByClassName(DOM.inputDescription)[0].focus();
                         } else {
+                            resetUI();
+                            historylist = document.getElementsByClassName('history__list')[0];
+                            for (var i = 0; i < historylist.childElementCount; i++) {
+
+                                if (historylist.children[i].id === UICtrl.getDate()) {
+                                    retrieveParticularMonth(historylist.children[i].id);
+                                    break;
+                                }
+                            }
                             UICtrl.showAlert("exp", "Deleted from Storage");
                         }
                     }
@@ -550,7 +576,10 @@ var controller = (function(budgetCtrl, UICtrl) {
         event.stopPropagation();
     };
     var retrieveParticularMonth = function(monthYear) {
-        var value, type, inputType, inputDescription, inputValue, saveBtn;
+        var value, type, inputType, inputDescription, inputValue, saveBtn, fields;
+
+        // Display Date in the UI
+        document.getElementsByClassName(DOM.dateLabel)[0].textContent = monthYear;
 
         // Get value(budgetDS) for the particular key(month&Year)
         value = JSON.parse(localStorage.getItem(monthYear));
@@ -578,6 +607,11 @@ var controller = (function(budgetCtrl, UICtrl) {
 
         }
         inputType.value = 'inc';
+        fields = document.querySelectorAll('.' + DOM.inputType + ',.' + DOM.inputValue + ',.' + DOM.inputDescription);
+        nodeListForEach(fields, function(cur) {
+            cur.classList.remove('red-focus');
+        });
+        document.getElementsByClassName(DOM.inputBtn)[0].classList.remove('red');
         // To show user that data is saved using icon
         saveBtn = document.getElementsByClassName(DOM.saveBtn)[0];
         saveBtn.childNodes[0].classList.remove('ion-ios-cloud-upload-outline');
